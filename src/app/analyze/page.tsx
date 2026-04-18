@@ -2,11 +2,13 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react'
 import DynamicDashboard from '@/components/DynamicDashboard'
-import { demoData } from '@/data/demo'
+import RelationshipSelector from '@/components/RelationshipSelector'
+import { allConfigs } from '@/data/relationships/registry'
+import type { RelationshipTypeId } from '@/data/relationships/types'
 
 /* ───────────────────── Types ───────────────────── */
 
-type AppState = 'upload' | 'loading' | 'results' | 'error'
+type AppState = 'select' | 'upload' | 'loading' | 'results' | 'error'
 type Provider = 'anthropic' | 'google'
 
 interface AnalysisError {
@@ -26,6 +28,7 @@ const LOADING_STEPS = [
 const MIN_MESSAGE_COUNT = 10
 const LS_PROVIDER_KEY = 'trackfights.provider'
 const LS_API_KEY = 'trackfights.apiKey'
+const LS_RELATIONSHIP_KEY = 'orbit.relationshipType'
 
 const PROVIDER_INFO: Record<Provider, { label: string; link: string; keyHint: string }> = {
   anthropic: {
@@ -53,7 +56,8 @@ function countMessages(text: string): number {
 /* ───────────────────── Component ───────────────────── */
 
 export default function AnalyzePage() {
-  const [state, setState] = useState<AppState>('upload')
+  const [state, setState] = useState<AppState>('select')
+  const [relationshipType, setRelationshipType] = useState<RelationshipTypeId | null>(null)
   const [dragOver, setDragOver] = useState(false)
   const [fileName, setFileName] = useState<string | null>(null)
   const [currentStep, setCurrentStep] = useState(0)
@@ -76,6 +80,10 @@ export default function AnalyzePage() {
       }
       const savedKey = localStorage.getItem(LS_API_KEY)
       if (savedKey) setApiKey(savedKey)
+      const savedRel = localStorage.getItem(LS_RELATIONSHIP_KEY)
+      if (savedRel && savedRel in allConfigs) {
+        setRelationshipType(savedRel as RelationshipTypeId)
+      }
     } catch {
       // localStorage unavailable (SSR / privacy mode) — ignore
     }
@@ -94,6 +102,12 @@ export default function AnalyzePage() {
       else localStorage.removeItem(LS_API_KEY)
     } catch {}
   }, [apiKey])
+
+  useEffect(() => {
+    try {
+      if (relationshipType) localStorage.setItem(LS_RELATIONSHIP_KEY, relationshipType)
+    } catch {}
+  }, [relationshipType])
 
   /* ── Loading step progression ── */
   useEffect(() => {
@@ -179,7 +193,7 @@ export default function AnalyzePage() {
       const res = await fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chatText, apiKey: apiKey.trim(), provider }),
+        body: JSON.stringify({ chatText, apiKey: apiKey.trim(), provider, relationshipType }),
         signal: abortRef.current.signal,
       })
 
@@ -199,7 +213,7 @@ export default function AnalyzePage() {
       })
       setState('error')
     }
-  }, [apiKey, provider])
+  }, [apiKey, provider, relationshipType])
 
   /* ── Try Demo ── */
   const loadDemo = useCallback(() => {
@@ -209,10 +223,11 @@ export default function AnalyzePage() {
 
     // Simulate loading steps then show results
     setTimeout(() => {
-      setResult(demoData)
+      const data = relationshipType ? allConfigs[relationshipType].demoData : null
+      setResult(data)
       setState('results')
     }, LOADING_STEPS.length * 1500)
-  }, [])
+  }, [relationshipType])
 
   /* ── Drag & drop handlers ── */
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -250,7 +265,7 @@ export default function AnalyzePage() {
   /* ── Reset ── */
   const reset = useCallback(() => {
     abortRef.current?.abort()
-    setState('upload')
+    setState('select')
     setResult(null)
     setError(null)
     setFileName(null)
@@ -275,7 +290,7 @@ export default function AnalyzePage() {
             </svg>
             Analyze another chat
           </button>
-          <DynamicDashboard data={result} />
+          <DynamicDashboard data={result} relationshipType={relationshipType ?? undefined} />
         </div>
       </div>
     )
@@ -433,10 +448,74 @@ export default function AnalyzePage() {
     )
   }
 
+  /* ── Select relationship type ── */
+  if (state === 'select') {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center px-4 py-12" style={{ backgroundColor: '#0a0b0f' }}>
+        <div className="w-full max-w-4xl flex flex-col items-center gap-8">
+          <div className="text-center">
+            <h1 className="text-3xl font-bold text-white tracking-tight">
+              What kind of relationship?
+            </h1>
+            <p className="mt-2 text-sm text-[#9ca3af] max-w-md mx-auto leading-relaxed">
+              Pick the type that best describes this chat. We&rsquo;ll tailor the analysis.
+            </p>
+          </div>
+
+          <RelationshipSelector
+            value={relationshipType}
+            onSelect={(id) => setRelationshipType(id)}
+          />
+
+          <button
+            onClick={() => setState('upload')}
+            disabled={!relationshipType}
+            className="py-3 px-8 rounded-xl text-sm font-medium text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+            style={{
+              background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+            }}
+          >
+            Continue
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   /* ── Upload (default) ── */
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4 py-12" style={{ backgroundColor: '#0a0b0f' }}>
       <div className="w-full max-w-xl flex flex-col items-center gap-8">
+        {/* Back link */}
+        <div className="w-full flex justify-start">
+          <button
+            onClick={() => {
+              setFileName(null)
+              if (fileInputRef.current) fileInputRef.current.value = ''
+              setState('select')
+            }}
+            className="inline-flex items-center gap-1.5 text-xs text-[#6b7280] hover:text-white transition-colors"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="19" y1="12" x2="5" y2="12" />
+              <polyline points="12 19 5 12 12 5" />
+            </svg>
+            Back
+          </button>
+        </div>
+
+        {/* Relationship badge */}
+        {relationshipType && (
+          <div
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium"
+            style={{ backgroundColor: '#12141c', border: '1px solid #1e2130', color: '#9ca3af' }}
+          >
+            <span className="text-[#6b7280]">Analyzing as:</span>
+            <span className="text-white">{allConfigs[relationshipType].label}</span>
+            <span>{allConfigs[relationshipType].emoji}</span>
+          </div>
+        )}
+
         {/* Header */}
         <div className="text-center">
           <h1 className="text-3xl font-bold text-white tracking-tight">

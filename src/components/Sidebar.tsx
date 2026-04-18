@@ -3,7 +3,16 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
-const publicItems = [
+const items = [
+  {
+    href: '/',
+    label: 'Home',
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M3 9.5 12 3l9 6.5V20a1 1 0 0 1-1 1h-5v-7h-6v7H4a1 1 0 0 1-1-1z" />
+      </svg>
+    ),
+  },
   {
     href: '/analyze',
     label: 'Analyze',
@@ -16,204 +25,89 @@ const publicItems = [
       </svg>
     ),
   },
-  {
-    href: '/launch',
-    label: 'Launch',
-    isCta: false,
-    icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z" />
-        <path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z" />
-        <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0" />
-        <path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5" />
-      </svg>
-    ),
-  },
 ]
 
-const dashboardItems = [
-  {
-    href: '/',
-    label: 'Overview',
-    icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="3" y="3" width="7" height="7" rx="1" />
-        <rect x="14" y="3" width="7" height="7" rx="1" />
-        <rect x="3" y="14" width="7" height="7" rx="1" />
-        <rect x="14" y="14" width="7" height="7" rx="1" />
-      </svg>
-    ),
-  },
-  {
-    href: '/love',
-    label: 'Love & Affection',
-    icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-      </svg>
-    ),
-  },
-  {
-    href: '/conflict',
-    label: 'Conflict & Psychology',
-    icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
-      </svg>
-    ),
-  },
-  {
-    href: '/health',
-    label: 'Health & Activity',
-    icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
-      </svg>
-    ),
-  },
-  {
-    href: '/predictions',
-    label: 'Predictions',
-    icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="12" cy="12" r="10" />
-        <circle cx="12" cy="12" r="6" />
-        <circle cx="12" cy="12" r="2" />
-      </svg>
-    ),
-  },
-  {
-    href: '/summary',
-    label: 'Full Summary',
-    icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <line x1="8" y1="6" x2="21" y2="6" />
-        <line x1="8" y1="12" x2="21" y2="12" />
-        <line x1="8" y1="18" x2="21" y2="18" />
-        <line x1="3" y1="6" x2="3.01" y2="6" />
-        <line x1="3" y1="12" x2="3.01" y2="12" />
-        <line x1="3" y1="18" x2="3.01" y2="18" />
-      </svg>
-    ),
-  },
-]
-
-// Mobile: Analyze + all 6 dashboard pages (Launch excluded)
-const mobileItems = [
-  publicItems[0], // Analyze
-  ...dashboardItems,
-]
+const GITHUB_URL = 'https://github.com/yogiduzit/trackfights'
 
 export default function Sidebar() {
   const pathname = usePathname()
 
+  // Hide entirely on the landing page — let the marketing layout breathe.
+  if (pathname === '/') return null
+
   return (
     <>
       {/* Desktop sidebar */}
-      <aside className="hidden md:flex fixed top-0 left-0 z-40 h-screen w-60 flex-col py-6 px-3 overflow-y-auto"
+      <aside
+        className="hidden md:flex fixed top-0 left-0 z-40 h-screen w-60 flex-col py-6 px-3 overflow-y-auto"
         style={{ backgroundColor: '#0d0e14' }}
       >
         {/* Brand */}
-        <div className="px-3 mb-8">
-          <h1 className="text-lg font-bold tracking-tight text-white">
+        <Link href="/" className="px-3 mb-8 block group">
+          <h1 className="text-lg font-bold tracking-tight text-white group-hover:text-blue-400 transition-colors">
             TrackFights
           </h1>
           <p className="text-xs text-muted mt-0.5">AI chat analysis</p>
-        </div>
+        </Link>
 
         {/* Navigation */}
-        <nav className="flex flex-col flex-1">
-          {/* Public section */}
-          <p className="px-3 mb-2 text-[10px] font-semibold uppercase tracking-widest text-[#6b7280]">
-            Public
-          </p>
-          <div className="flex flex-col gap-1">
-            {publicItems.map((item) => {
-              const isActive =
-                item.href === '/'
-                  ? pathname === '/'
-                  : pathname.startsWith(item.href)
+        <nav className="flex flex-col flex-1 gap-1">
+          {items.map((item) => {
+            const isActive =
+              item.href === '/' ? pathname === '/' : pathname.startsWith(item.href)
 
-              if (item.isCta) {
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={`
-                      flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all
-                      text-white
-                      ${isActive ? 'shadow-lg shadow-blue-500/25 brightness-110' : 'hover:shadow-lg hover:shadow-blue-500/20 hover:brightness-110'}
-                    `}
-                    style={{
-                      background: 'linear-gradient(135deg, #2d6bc4, #c4406e)',
-                    }}
-                  >
-                    <span className="text-white">{item.icon}</span>
-                    {item.label}
-                  </Link>
-                )
-              }
-
+            if (item.isCta) {
               return (
                 <Link
                   key={item.href}
                   href={item.href}
                   className={`
-                    flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
-                    ${
-                      isActive
-                        ? 'text-white border-l-[3px] border-blue-500'
-                        : 'text-[#9ca3af] hover:text-white hover:bg-[#15171f] border-l-[3px] border-transparent'
-                    }
+                    flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all text-white
+                    ${isActive ? 'shadow-lg shadow-blue-500/25 brightness-110' : 'hover:shadow-lg hover:shadow-blue-500/20 hover:brightness-110'}
                   `}
-                  style={isActive ? { backgroundColor: '#1a1d27' } : undefined}
+                  style={{ background: 'linear-gradient(135deg, #2d6bc4, #c4406e)' }}
                 >
-                  <span className={isActive ? 'text-blue-400' : 'text-[#9ca3af]'}>
-                    {item.icon}
-                  </span>
+                  <span className="text-white">{item.icon}</span>
                   {item.label}
                 </Link>
               )
-            })}
-          </div>
+            }
 
-          {/* Divider */}
-          <div className="my-4 mx-3 border-t border-[#1e2130]" />
-
-          {/* Dashboard section */}
-          <p className="px-3 mb-2 text-[10px] font-semibold uppercase tracking-widest text-[#6b7280]">
-            Sample Dashboard
-          </p>
-          <div className="flex flex-col gap-1">
-            {dashboardItems.map((item) => {
-              const isActive =
-                item.href === '/'
-                  ? pathname === '/'
-                  : pathname.startsWith(item.href)
-
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`
-                    flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
-                    ${
-                      isActive
-                        ? 'text-white border-l-[3px] border-blue-500'
-                        : 'text-[#9ca3af] hover:text-white hover:bg-[#15171f] border-l-[3px] border-transparent'
-                    }
-                  `}
-                  style={isActive ? { backgroundColor: '#1a1d27' } : undefined}
-                >
-                  <span className={isActive ? 'text-blue-400' : 'text-[#9ca3af]'}>
-                    {item.icon}
-                  </span>
-                  {item.label}
-                </Link>
-              )
-            })}
-          </div>
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`
+                  flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
+                  ${
+                    isActive
+                      ? 'text-white border-l-[3px] border-blue-500'
+                      : 'text-[#9ca3af] hover:text-white hover:bg-[#15171f] border-l-[3px] border-transparent'
+                  }
+                `}
+                style={isActive ? { backgroundColor: '#1a1d27' } : undefined}
+              >
+                <span className={isActive ? 'text-blue-400' : 'text-[#9ca3af]'}>
+                  {item.icon}
+                </span>
+                {item.label}
+              </Link>
+            )
+          })}
         </nav>
+
+        {/* Footer — GitHub link */}
+        <a
+          href={GITHUB_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-[#9ca3af] hover:text-white hover:bg-[#15171f] transition-colors"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 .3a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2c-3.3.7-4-1.6-4-1.6-.6-1.4-1.4-1.8-1.4-1.8-1.1-.7.1-.7.1-.7 1.2.1 1.9 1.3 1.9 1.3 1 .1 2.6.5 3.3.2.1-.8.4-1.3.7-1.6-2.7-.3-5.5-1.3-5.5-6 0-1.3.5-2.4 1.3-3.2-.1-.3-.6-1.6.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0C17.3 4.7 18.3 5 18.3 5c.7 1.6.2 2.9.1 3.2.8.8 1.3 1.9 1.3 3.2 0 4.6-2.8 5.6-5.5 5.9.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .3" />
+          </svg>
+          GitHub
+        </a>
       </aside>
 
       {/* Mobile bottom nav */}
@@ -221,12 +115,9 @@ export default function Sidebar() {
         className="md:hidden fixed bottom-0 left-0 right-0 z-40 flex flex-row items-center justify-around py-2 border-t border-[#1e2130]"
         style={{ backgroundColor: '#0d0e14' }}
       >
-        {mobileItems.map((item) => {
+        {items.map((item) => {
           const isActive =
-            item.href === '/'
-              ? pathname === '/'
-              : pathname.startsWith(item.href)
-
+            item.href === '/' ? pathname === '/' : pathname.startsWith(item.href)
           const isCta = 'isCta' in item && item.isCta
 
           return (
@@ -235,19 +126,20 @@ export default function Sidebar() {
               href={item.href}
               className={`
                 flex flex-col items-center gap-0.5 px-2 py-1 text-[10px] font-medium transition-colors
-                ${isCta
-                  ? 'text-white'
-                  : isActive ? 'text-blue-400' : 'text-[#9ca3af]'
-                }
+                ${isCta ? 'text-white' : isActive ? 'text-blue-400' : 'text-[#9ca3af]'}
               `}
-              style={isCta ? {
-                background: 'linear-gradient(135deg, #2d6bc4, #c4406e)',
-                borderRadius: '8px',
-                padding: '4px 10px',
-              } : undefined}
+              style={
+                isCta
+                  ? {
+                      background: 'linear-gradient(135deg, #2d6bc4, #c4406e)',
+                      borderRadius: '8px',
+                      padding: '4px 10px',
+                    }
+                  : undefined
+              }
             >
               {item.icon}
-              <span>{item.label.split(' ')[0]}</span>
+              <span>{item.label}</span>
             </Link>
           )
         })}

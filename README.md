@@ -51,21 +51,29 @@ If you self-host with a server env var, the chat text still only ever touches yo
 ```
 src/
   app/
-    analyze/       — upload + BYOK flow
+    page.tsx       — landing page
+    analyze/       — upload + BYOK flow (the tool)
     api/analyze/   — provider-agnostic analysis endpoint
-    launch/        — landing page
-    (other routes) — static sample dashboard (placeholder data)
-  components/      — Recharts + custom visualization components
+    layout.tsx     — root layout (sidebar + metadata)
+  components/
+    DynamicDashboard.tsx  — the 12-section dashboard (used by /analyze)
+    Sidebar.tsx           — nav (hidden on landing)
   data/
     demo.ts        — fictional sample used by "Try Demo"
-    metrics.ts     — placeholder shape for the static dashboard routes
 ```
+
+## Rate limiting
+
+The `/api/analyze` endpoint has a built-in in-memory rate limit (10 requests / 10 minutes per IP) as a baseline guard. This works for self-hosted and single-instance deploys.
+
+**For multi-instance production** (Vercel serverless, etc.), the in-memory limit is per-lambda and effectively weaker. Swap it for [Upstash Ratelimit](https://upstash.com/docs/redis/sdks/ratelimit-ts/overview) if you expose a server env key, or simply ship BYOK-only so users pay their own bill.
 
 ## Deploying publicly
 
-If you deploy the `/api/analyze` endpoint with a server env key, add rate limiting. Otherwise anyone hitting the endpoint can run up your API bill. [Upstash Ratelimit](https://upstash.com/docs/redis/sdks/ratelimit-ts/overview) is the easy option on Vercel.
+Two recommended modes:
 
-Best practice for a public demo: ship **without** server env keys. Require visitors to use *Try Demo* or bring their own key.
+- **BYOK-only (safest)** — don't set `ANTHROPIC_API_KEY` / `GOOGLE_API_KEY` on the server. Visitors can use *Try Demo* with no key or paste their own. You pay $0.
+- **With a server fallback key** — add Upstash Ratelimit and set a strict daily budget on the provider side. Anyone hitting the endpoint otherwise runs up your bill.
 
 ## License
 

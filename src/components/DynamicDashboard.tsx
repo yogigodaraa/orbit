@@ -10,6 +10,9 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 
+import type { RelationshipTypeId } from '@/data/relationships/types';
+import { allConfigs } from '@/data/relationships/registry';
+
 /* ── Types ── */
 
 interface AnalysisData {
@@ -159,7 +162,7 @@ function DonutRing({
   );
 }
 
-function ComparisonBar({ v1, v2 }: { v1: number; v2: number }) {
+function ComparisonBar({ v1, v2, color1 = COLOR_P1, color2 = COLOR_P2 }: { v1: number; v2: number; color1?: string; color2?: string }) {
   const total = v1 + v2;
   const pct1 = total > 0 ? Math.round((v1 / total) * 100) : 50;
   const pct2 = 100 - pct1;
@@ -168,13 +171,13 @@ function ComparisonBar({ v1, v2 }: { v1: number; v2: number }) {
     <div className="flex h-7 w-full overflow-hidden rounded-md">
       <div
         className="flex items-center justify-center text-xs font-semibold text-white transition-all duration-500"
-        style={{ width: `${pct1}%`, backgroundColor: COLOR_P1 }}
+        style={{ width: `${pct1}%`, backgroundColor: color1 }}
       >
         {pct1}%
       </div>
       <div
         className="flex items-center justify-center text-xs font-semibold text-white transition-all duration-500"
-        style={{ width: `${pct2}%`, backgroundColor: COLOR_P2 }}
+        style={{ width: `${pct2}%`, backgroundColor: color2 }}
       >
         {pct2}%
       </div>
@@ -279,18 +282,35 @@ function TrendIcon({ trend }: { trend: string }) {
    Main Component
    ══════════════════════════════════════════════ */
 
-export default function DynamicDashboard({ data }: { data: AnalysisData }) {
+export default function DynamicDashboard({ data, relationshipType }: { data: AnalysisData; relationshipType?: RelationshipTypeId }) {
   const { person1, person2 } = data.participants;
   const dailyAvg = data.totalDays > 0 ? Math.round(data.totalMessages / data.totalDays) : 0;
+
+  const cfg = relationshipType ? allConfigs[relationshipType] : null;
+  const p1Color = cfg?.theme.person1 ?? COLOR_P1;
+  const p2Color = cfg?.theme.person2 ?? COLOR_P2;
+  const headings = cfg?.copy.sectionHeadings;
+  const h = {
+    affection: headings?.affection ?? 'Love, Affection & Care',
+    reciprocity: headings?.reciprocity ?? 'Reciprocity',
+    conflict: headings?.conflict ?? 'Conflict Deep Dive',
+    patterns: headings?.patterns ?? 'Psychological & Behavioural Patterns',
+    ratings: headings?.ratings ?? 'Person Ratings',
+    predictions: headings?.predictions ?? 'Predictive Analytics',
+    warnings: headings?.warnings ?? 'Early Warning System',
+    timeline: headings?.timeline ?? 'Relationship Health Over Time',
+    verdict: headings?.verdict ?? 'Verdict',
+    overview: headings?.overview ?? 'Stats Overview',
+  };
 
   return (
     <div className="space-y-12">
       {/* ═══════════ 1. Header ═══════════ */}
       <header className="text-center">
         <h1 className="text-3xl font-bold tracking-tight text-white md:text-4xl">
-          <span style={{ color: COLOR_P1 }}>{person1}</span>
+          <span style={{ color: p1Color }}>{person1}</span>
           {' & '}
-          <span style={{ color: COLOR_P2 }}>{person2}</span>
+          <span style={{ color: p2Color }}>{person2}</span>
         </h1>
         <p className="mt-2 text-sm text-zinc-400">
           {fmt(data.totalMessages)} messages &middot; {data.dateRange.start} to {data.dateRange.end}
@@ -324,10 +344,10 @@ export default function DynamicDashboard({ data }: { data: AnalysisData }) {
           {/* Messages Per Person */}
           <div className="rounded-xl border border-white/[0.06] bg-[#12141c] p-6 shadow-[0_0_24px_rgba(255,255,255,0.02)] transition-colors hover:border-white/[0.1]">
             <p className="text-sm font-medium text-zinc-400">Messages Per Person</p>
-            <p className="mt-2 text-lg font-bold tracking-tight" style={{ color: COLOR_P1 }}>
+            <p className="mt-2 text-lg font-bold tracking-tight" style={{ color: p1Color }}>
               {fmt(data.rawVolume.person1.messages)}
             </p>
-            <p className="mt-0.5 text-lg font-bold tracking-tight" style={{ color: COLOR_P2 }}>
+            <p className="mt-0.5 text-lg font-bold tracking-tight" style={{ color: p2Color }}>
               {fmt(data.rawVolume.person2.messages)}
             </p>
           </div>
@@ -338,20 +358,20 @@ export default function DynamicDashboard({ data }: { data: AnalysisData }) {
           {/* Person 1 */}
           <div
             className="rounded-xl border border-white/[0.06] bg-[#12141c] p-6 shadow-[0_0_24px_rgba(255,255,255,0.02)] transition-colors hover:border-white/[0.1]"
-            style={{ borderTopColor: COLOR_P1, borderTopWidth: 2 }}
+            style={{ borderTopColor: p1Color, borderTopWidth: 2 }}
           >
-            <h3 className="text-lg font-semibold" style={{ color: COLOR_P1 }}>{person1}</h3>
+            <h3 className="text-lg font-semibold" style={{ color: p1Color }}>{person1}</h3>
             <div className="mt-4 space-y-3">
               <div>
-                <p className="text-2xl font-bold" style={{ color: COLOR_P1 }}>{fmt(data.rawVolume.person1.messages)}</p>
+                <p className="text-2xl font-bold" style={{ color: p1Color }}>{fmt(data.rawVolume.person1.messages)}</p>
                 <p className="text-xs text-zinc-500">messages sent</p>
               </div>
               <div>
-                <p className="text-2xl font-bold" style={{ color: COLOR_P1 }}>{data.rawVolume.person1.avgReplyMin} min</p>
+                <p className="text-2xl font-bold" style={{ color: p1Color }}>{data.rawVolume.person1.avgReplyMin} min</p>
                 <p className="text-xs text-zinc-500">avg reply time</p>
               </div>
               <div>
-                <p className="text-2xl font-bold" style={{ color: COLOR_P1 }}>{fmt(data.rawVolume.person1.startsDay)}</p>
+                <p className="text-2xl font-bold" style={{ color: p1Color }}>{fmt(data.rawVolume.person1.startsDay)}</p>
                 <p className="text-xs text-zinc-500">times started the day first</p>
               </div>
             </div>
@@ -360,20 +380,20 @@ export default function DynamicDashboard({ data }: { data: AnalysisData }) {
           {/* Person 2 */}
           <div
             className="rounded-xl border border-white/[0.06] bg-[#12141c] p-6 shadow-[0_0_24px_rgba(255,255,255,0.02)] transition-colors hover:border-white/[0.1]"
-            style={{ borderTopColor: COLOR_P2, borderTopWidth: 2 }}
+            style={{ borderTopColor: p2Color, borderTopWidth: 2 }}
           >
-            <h3 className="text-lg font-semibold" style={{ color: COLOR_P2 }}>{person2}</h3>
+            <h3 className="text-lg font-semibold" style={{ color: p2Color }}>{person2}</h3>
             <div className="mt-4 space-y-3">
               <div>
-                <p className="text-2xl font-bold" style={{ color: COLOR_P2 }}>{fmt(data.rawVolume.person2.messages)}</p>
+                <p className="text-2xl font-bold" style={{ color: p2Color }}>{fmt(data.rawVolume.person2.messages)}</p>
                 <p className="text-xs text-zinc-500">messages sent</p>
               </div>
               <div>
-                <p className="text-2xl font-bold" style={{ color: COLOR_P2 }}>{data.rawVolume.person2.avgReplyMin} min</p>
+                <p className="text-2xl font-bold" style={{ color: p2Color }}>{data.rawVolume.person2.avgReplyMin} min</p>
                 <p className="text-xs text-zinc-500">avg reply time</p>
               </div>
               <div>
-                <p className="text-2xl font-bold" style={{ color: COLOR_P2 }}>{fmt(data.rawVolume.person2.startsDay)}</p>
+                <p className="text-2xl font-bold" style={{ color: p2Color }}>{fmt(data.rawVolume.person2.startsDay)}</p>
                 <p className="text-xs text-zinc-500">times started the day first</p>
               </div>
             </div>
@@ -384,7 +404,7 @@ export default function DynamicDashboard({ data }: { data: AnalysisData }) {
       {/* ═══════════ 3. Ratings ═══════════ */}
       <section className="space-y-6">
         <div>
-          <h2 className="text-2xl font-bold text-[#e4e4e7]">Person Ratings</h2>
+          <h2 className="text-2xl font-bold text-[#e4e4e7]">{h.ratings}</h2>
           <p className="mt-1 text-sm text-[#9ca3af]">
             Composite scores across relationship dimensions, derived from {fmt(data.totalMessages)} messages over {fmt(data.totalDays)} days.
           </p>
@@ -392,8 +412,8 @@ export default function DynamicDashboard({ data }: { data: AnalysisData }) {
 
         {/* Overall score rings */}
         <div className="flex items-center justify-center gap-16 rounded-xl bg-[#12141c] py-8">
-          <ScoreRing score={data.ratings.person1.overall} color={COLOR_P1} name={person1} />
-          <ScoreRing score={data.ratings.person2.overall} color={COLOR_P2} name={person2} />
+          <ScoreRing score={data.ratings.person1.overall} color={p1Color} name={person1} />
+          <ScoreRing score={data.ratings.person2.overall} color={p2Color} name={person2} />
         </div>
 
         {/* Dimension progress bars */}
@@ -407,13 +427,13 @@ export default function DynamicDashboard({ data }: { data: AnalysisData }) {
                 {/* Person 1 bar */}
                 <div className="mb-2">
                   <div className="mb-1 flex items-center justify-between">
-                    <span className="text-xs font-medium" style={{ color: COLOR_P1 }}>{person1}</span>
+                    <span className="text-xs font-medium" style={{ color: p1Color }}>{person1}</span>
                     <span className="text-xs text-[#9ca3af]">{dim.score}</span>
                   </div>
                   <div className="h-2 w-full overflow-hidden rounded-full bg-[#2a2d37]">
                     <div
                       className="h-full rounded-full"
-                      style={{ width: `${dim.score}%`, backgroundColor: COLOR_P1, transition: 'width 0.6s ease' }}
+                      style={{ width: `${dim.score}%`, backgroundColor: p1Color, transition: 'width 0.6s ease' }}
                     />
                   </div>
                   <p className="mt-1 text-[11px] leading-tight text-[#9ca3af]">{dim.detail}</p>
@@ -423,13 +443,13 @@ export default function DynamicDashboard({ data }: { data: AnalysisData }) {
                 {dim2 && (
                   <div>
                     <div className="mb-1 flex items-center justify-between">
-                      <span className="text-xs font-medium" style={{ color: COLOR_P2 }}>{person2}</span>
+                      <span className="text-xs font-medium" style={{ color: p2Color }}>{person2}</span>
                       <span className="text-xs text-[#9ca3af]">{dim2.score}</span>
                     </div>
                     <div className="h-2 w-full overflow-hidden rounded-full bg-[#2a2d37]">
                       <div
                         className="h-full rounded-full"
-                        style={{ width: `${dim2.score}%`, backgroundColor: COLOR_P2, transition: 'width 0.6s ease' }}
+                        style={{ width: `${dim2.score}%`, backgroundColor: p2Color, transition: 'width 0.6s ease' }}
                       />
                     </div>
                     <p className="mt-1 text-[11px] leading-tight text-[#9ca3af]">{dim2.detail}</p>
@@ -443,7 +463,7 @@ export default function DynamicDashboard({ data }: { data: AnalysisData }) {
 
       {/* ═══════════ 4. Love & Affection ═══════════ */}
       <section className="space-y-6">
-        <h2 className="text-2xl font-bold tracking-tight text-[#e4e4e7]">Love, Affection &amp; Care</h2>
+        <h2 className="text-2xl font-bold tracking-tight text-[#e4e4e7]">{h.affection}</h2>
 
         <div className="rounded-xl border border-[#1e2130] bg-[#12141c] p-6">
           <div className="space-y-4">
@@ -455,18 +475,18 @@ export default function DynamicDashboard({ data }: { data: AnalysisData }) {
                     {item.person1} vs {item.person2}
                   </span>
                 </div>
-                <ComparisonBar v1={item.person1} v2={item.person2} />
+                <ComparisonBar v1={item.person1} v2={item.person2} color1={p1Color} color2={p2Color} />
               </div>
             ))}
 
             {/* Legend */}
             <div className="flex items-center gap-6 pt-2 text-sm text-gray-400">
               <span className="flex items-center gap-2">
-                <span className="inline-block h-3 w-3 rounded-sm" style={{ backgroundColor: COLOR_P1 }} />
+                <span className="inline-block h-3 w-3 rounded-sm" style={{ backgroundColor: p1Color }} />
                 {person1}
               </span>
               <span className="flex items-center gap-2">
-                <span className="inline-block h-3 w-3 rounded-sm" style={{ backgroundColor: COLOR_P2 }} />
+                <span className="inline-block h-3 w-3 rounded-sm" style={{ backgroundColor: p2Color }} />
                 {person2}
               </span>
             </div>
@@ -476,7 +496,7 @@ export default function DynamicDashboard({ data }: { data: AnalysisData }) {
 
       {/* ═══════════ 5. Reciprocity ═══════════ */}
       <section className="space-y-6">
-        <h2 className="text-2xl font-bold tracking-tight text-[#e4e4e7]">Reciprocity</h2>
+        <h2 className="text-2xl font-bold tracking-tight text-[#e4e4e7]">{h.reciprocity}</h2>
 
         <div className="rounded-xl border border-[#1e2130] bg-[#12141c] p-6">
           <h3 className="mb-6 text-lg font-semibold text-[#e4e4e7]">
@@ -486,13 +506,13 @@ export default function DynamicDashboard({ data }: { data: AnalysisData }) {
           <div className="flex flex-wrap justify-center gap-12">
             <DonutRing
               percent={data.reciprocity.person1SaysLovePerson2Reciprocates}
-              color={COLOR_P2}
+              color={p2Color}
               label={`When ${person1} says "I love you" \u2192 ${person2} reciprocates`}
               sublabel={`${data.reciprocity.person1SaysLovePerson2Reciprocates}% of the time`}
             />
             <DonutRing
               percent={data.reciprocity.person2SaysLovePerson1Reciprocates}
-              color={COLOR_P1}
+              color={p1Color}
               label={`When ${person2} says "I love you" \u2192 ${person1} reciprocates`}
               sublabel={`${data.reciprocity.person2SaysLovePerson1Reciprocates}% of the time`}
             />
@@ -502,7 +522,7 @@ export default function DynamicDashboard({ data }: { data: AnalysisData }) {
 
       {/* ═══════════ 6. Conflict ═══════════ */}
       <section className="space-y-6">
-        <h2 className="text-2xl font-bold tracking-tight text-white">Conflict Deep Dive</h2>
+        <h2 className="text-2xl font-bold tracking-tight text-white">{h.conflict}</h2>
 
         <div className="rounded-xl border border-[#1e2130] bg-[#12141c] p-6">
           <div className="space-y-4">
@@ -514,18 +534,18 @@ export default function DynamicDashboard({ data }: { data: AnalysisData }) {
                     {item.person1} vs {item.person2}
                   </span>
                 </div>
-                <ComparisonBar v1={item.person1} v2={item.person2} />
+                <ComparisonBar v1={item.person1} v2={item.person2} color1={p1Color} color2={p2Color} />
               </div>
             ))}
 
             {/* Legend */}
             <div className="flex items-center gap-6 pt-2 text-sm text-gray-400">
               <span className="flex items-center gap-2">
-                <span className="inline-block h-3 w-3 rounded-sm" style={{ backgroundColor: COLOR_P1 }} />
+                <span className="inline-block h-3 w-3 rounded-sm" style={{ backgroundColor: p1Color }} />
                 {person1}
               </span>
               <span className="flex items-center gap-2">
-                <span className="inline-block h-3 w-3 rounded-sm" style={{ backgroundColor: COLOR_P2 }} />
+                <span className="inline-block h-3 w-3 rounded-sm" style={{ backgroundColor: p2Color }} />
                 {person2}
               </span>
             </div>
@@ -535,9 +555,7 @@ export default function DynamicDashboard({ data }: { data: AnalysisData }) {
 
       {/* ═══════════ 7. Psychological Patterns ═══════════ */}
       <section className="space-y-6">
-        <h2 className="text-2xl font-bold tracking-tight text-[#e4e4e7]">
-          Psychological &amp; Behavioural Patterns
-        </h2>
+        <h2 className="text-2xl font-bold tracking-tight text-[#e4e4e7]">{h.patterns}</h2>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {data.psychPatterns.map((p) => {
@@ -551,19 +569,19 @@ export default function DynamicDashboard({ data }: { data: AnalysisData }) {
                 <h3 className="mb-3 text-sm font-semibold leading-tight text-[#e4e4e7]">{p.label}</h3>
 
                 <div className="mb-2 flex items-baseline justify-between gap-2">
-                  <span className="text-xl font-bold tabular-nums" style={{ color: COLOR_P1 }}>
+                  <span className="text-xl font-bold tabular-nums" style={{ color: p1Color }}>
                     {p.person1.toLocaleString()}
                   </span>
                   <span className="text-xs text-[#9ca3af]">vs</span>
-                  <span className="text-xl font-bold tabular-nums" style={{ color: COLOR_P2 }}>
+                  <span className="text-xl font-bold tabular-nums" style={{ color: p2Color }}>
                     {p.person2.toLocaleString()}
                   </span>
                 </div>
 
                 {/* Comparison bar */}
                 <div className="flex h-2 w-full overflow-hidden rounded-full bg-[#1e2130]">
-                  <div className="h-full transition-all" style={{ width: `${pct1}%`, backgroundColor: COLOR_P1 }} />
-                  <div className="h-full transition-all" style={{ width: `${100 - pct1}%`, backgroundColor: COLOR_P2 }} />
+                  <div className="h-full transition-all" style={{ width: `${pct1}%`, backgroundColor: p1Color }} />
+                  <div className="h-full transition-all" style={{ width: `${100 - pct1}%`, backgroundColor: p2Color }} />
                 </div>
 
                 <div className="mt-2 flex justify-between text-[10px] text-[#9ca3af]">
@@ -581,7 +599,7 @@ export default function DynamicDashboard({ data }: { data: AnalysisData }) {
       {/* ═══════════ 8. Predictions ═══════════ */}
       <section className="space-y-6">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight text-white">Predictive Analytics</h2>
+          <h2 className="text-2xl font-bold tracking-tight text-white">{h.predictions}</h2>
           <p className="mt-1 text-sm text-[#9ca3af]">
             What&apos;s likely to happen next based on behavioral patterns
           </p>
@@ -648,7 +666,7 @@ export default function DynamicDashboard({ data }: { data: AnalysisData }) {
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-75" />
             <span className="relative inline-flex h-3 w-3 rounded-full bg-red-500" />
           </span>
-          <h2 className="text-2xl font-bold tracking-tight text-white">Early Warning System</h2>
+          <h2 className="text-2xl font-bold tracking-tight text-white">{h.warnings}</h2>
         </div>
 
         <div className="space-y-4">
@@ -733,7 +751,7 @@ export default function DynamicDashboard({ data }: { data: AnalysisData }) {
           <div className="flex flex-col gap-8 md:flex-row md:gap-10">
             {/* Person 1 cloud */}
             <div className="min-w-[280px] flex-1">
-              <h3 className="mb-4 text-lg font-semibold tracking-tight" style={{ color: COLOR_P1 }}>
+              <h3 className="mb-4 text-lg font-semibold tracking-tight" style={{ color: p1Color }}>
                 {person1}&apos;s Top Words
               </h3>
               <div className="flex flex-wrap gap-2.5">
@@ -742,8 +760,8 @@ export default function DynamicDashboard({ data }: { data: AnalysisData }) {
                   return data.topWords.person1.map((entry) => {
                     const intensity = entry.count / maxCount;
                     const size = fontSize(entry.count, maxCount);
-                    const bg = lighten(COLOR_P1, 0.82 + (1 - intensity) * 0.12);
-                    const fg = lighten(COLOR_P1, (1 - intensity) * 0.15);
+                    const bg = lighten(p1Color, 0.82 + (1 - intensity) * 0.12);
+                    const fg = lighten(p1Color, (1 - intensity) * 0.15);
                     return (
                       <span
                         key={entry.word}
@@ -763,7 +781,7 @@ export default function DynamicDashboard({ data }: { data: AnalysisData }) {
 
             {/* Person 2 cloud */}
             <div className="min-w-[280px] flex-1">
-              <h3 className="mb-4 text-lg font-semibold tracking-tight" style={{ color: COLOR_P2 }}>
+              <h3 className="mb-4 text-lg font-semibold tracking-tight" style={{ color: p2Color }}>
                 {person2}&apos;s Top Words
               </h3>
               <div className="flex flex-wrap gap-2.5">
@@ -772,8 +790,8 @@ export default function DynamicDashboard({ data }: { data: AnalysisData }) {
                   return data.topWords.person2.map((entry) => {
                     const intensity = entry.count / maxCount;
                     const size = fontSize(entry.count, maxCount);
-                    const bg = lighten(COLOR_P2, 0.82 + (1 - intensity) * 0.12);
-                    const fg = lighten(COLOR_P2, (1 - intensity) * 0.15);
+                    const bg = lighten(p2Color, 0.82 + (1 - intensity) * 0.12);
+                    const fg = lighten(p2Color, (1 - intensity) * 0.15);
                     return (
                       <span
                         key={entry.word}
@@ -796,7 +814,7 @@ export default function DynamicDashboard({ data }: { data: AnalysisData }) {
 
       {/* ═══════════ 11. Health Timeline ═══════════ */}
       <section className="space-y-6">
-        <h2 className="text-xl font-semibold text-white">Relationship Health Over Time</h2>
+        <h2 className="text-xl font-semibold text-white">{h.timeline}</h2>
 
         <div className="rounded-2xl bg-[#12141c] p-6">
           <div className="mb-4 flex flex-wrap items-center gap-5 text-xs text-zinc-400">
@@ -848,24 +866,24 @@ export default function DynamicDashboard({ data }: { data: AnalysisData }) {
 
       {/* ═══════════ 12. Verdict ═══════════ */}
       <section className="space-y-6">
-        <h2 className="text-2xl font-bold tracking-tight text-white">Verdict</h2>
+        <h2 className="text-2xl font-bold tracking-tight text-white">{h.verdict}</h2>
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           {/* Person 1 summary */}
           <div
             className="rounded-xl border border-[#1e2130] bg-[#12141c] p-6"
-            style={{ borderTopWidth: 3, borderTopColor: COLOR_P1 }}
+            style={{ borderTopWidth: 3, borderTopColor: p1Color }}
           >
-            <h3 className="mb-3 text-lg font-semibold" style={{ color: COLOR_P1 }}>{person1}</h3>
+            <h3 className="mb-3 text-lg font-semibold" style={{ color: p1Color }}>{person1}</h3>
             <p className="text-sm leading-relaxed text-zinc-300">{data.verdict.person1Summary}</p>
           </div>
 
           {/* Person 2 summary */}
           <div
             className="rounded-xl border border-[#1e2130] bg-[#12141c] p-6"
-            style={{ borderTopWidth: 3, borderTopColor: COLOR_P2 }}
+            style={{ borderTopWidth: 3, borderTopColor: p2Color }}
           >
-            <h3 className="mb-3 text-lg font-semibold" style={{ color: COLOR_P2 }}>{person2}</h3>
+            <h3 className="mb-3 text-lg font-semibold" style={{ color: p2Color }}>{person2}</h3>
             <p className="text-sm leading-relaxed text-zinc-300">{data.verdict.person2Summary}</p>
           </div>
 

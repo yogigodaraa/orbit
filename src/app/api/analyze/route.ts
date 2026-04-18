@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { allConfigs } from '@/data/relationships/registry';
+import type { RelationshipTypeId } from '@/data/relationships/types';
 
 /* ─── Types ─── */
 
@@ -8,24 +10,67 @@ interface AnalyzeRequestBody {
   chatText?: unknown;
   apiKey?: unknown;
   provider?: unknown;
+  relationshipType?: unknown;
 }
 
 interface ErrorPayload {
   error: string;
   code:
     | 'invalid_body'
+    | 'invalid_type'
     | 'chat_too_short'
     | 'chat_too_large'
     | 'missing_key'
     | 'invalid_provider'
+    | 'rate_limited'
     | 'upstream_error'
     | 'parse_error'
     | 'unknown';
   details?: string;
 }
 
-function errorResponse(status: number, payload: ErrorPayload) {
-  return NextResponse.json(payload, { status });
+function errorResponse(status: number, payload: ErrorPayload, headers?: HeadersInit) {
+  return NextResponse.json(payload, { status, headers });
+}
+
+/* ─── Rate limiting (in-memory, per-IP) ───
+ *
+ * 10 requests per 10 minutes per IP. In-memory state is per-instance, so on a
+ * multi-instance deploy (Vercel serverless, etc.) each lambda has its own bucket —
+ * limits are weaker than they appear. For production, swap this for Upstash
+ * Ratelimit (see README). This is a baseline guard for self-hosted and dev use.
+ */
+const RATE_LIMIT_MAX = 10;
+const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
+const rateLimitBuckets = new Map<string, { count: number; resetAt: number }>();
+
+function clientIp(req: NextRequest): string {
+  // Vercel / most proxies send x-forwarded-for as "client, proxy1, proxy2..."
+  const fwd = req.headers.get('x-forwarded-for');
+  if (fwd) return fwd.split(',')[0].trim();
+  return req.headers.get('x-real-ip') ?? 'anonymous';
+}
+
+function checkRateLimit(ip: string): { allowed: true } | { allowed: false; retryAfterSec: number } {
+  const now = Date.now();
+  const bucket = rateLimitBuckets.get(ip);
+
+  // Lazy sweep — keep the map from growing unbounded
+  if (rateLimitBuckets.size > 5000) {
+    for (const [key, value] of rateLimitBuckets) {
+      if (value.resetAt < now) rateLimitBuckets.delete(key);
+    }
+  }
+
+  if (!bucket || bucket.resetAt < now) {
+    rateLimitBuckets.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
+    return { allowed: true };
+  }
+  if (bucket.count >= RATE_LIMIT_MAX) {
+    return { allowed: false, retryAfterSec: Math.ceil((bucket.resetAt - now) / 1000) };
+  }
+  bucket.count += 1;
+  return { allowed: true };
 }
 
 /* ─── Config ─── */
@@ -36,7 +81,7 @@ const TRUNCATE_THRESHOLD = 200_000;
 const TRUNCATE_HEAD = 150_000;
 const TRUNCATE_TAIL = 50_000;
 
-const SYSTEM_PROMPT = `You are an expert relationship analyst. Analyze the following chat export between two people.
+const FALLBACK_SYSTEM_PROMPT = `You are an expert relationship analyst. Analyze the following chat export between two people.
 
 Return ONLY valid JSON (no markdown, no explanation) with this exact structure:
 {
@@ -114,7 +159,7 @@ Be thorough and count carefully. Base everything on actual message content. If t
 
 /* ─── Provider calls ─── */
 
-async function callAnthropic(apiKey: string, chatText: string): Promise<unknown> {
+async function callAnthropic(apiKey: string, chatText: string, systemPrompt: string): Promise<unknown> {
   const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
@@ -125,7 +170,7 @@ async function callAnthropic(apiKey: string, chatText: string): Promise<unknown>
     body: JSON.stringify({
       model: 'claude-sonnet-4-20250514',
       max_tokens: 8000,
-      system: SYSTEM_PROMPT,
+      system: systemPrompt,
       messages: [{ role: 'user', content: `Analyze this chat:\n\n${chatText}` }],
     }),
   });
@@ -142,7 +187,7 @@ async function callAnthropic(apiKey: string, chatText: string): Promise<unknown>
   return extractJson(text);
 }
 
-async function callGoogle(apiKey: string, chatText: string): Promise<unknown> {
+async function callGoogle(apiKey: string, chatText: string, systemPrompt: string): Promise<unknown> {
   // Gemini 2.0 Flash — free tier, 1M context, native JSON output.
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${encodeURIComponent(
     apiKey
@@ -152,7 +197,7 @@ async function callGoogle(apiKey: string, chatText: string): Promise<unknown> {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+      systemInstruction: { parts: [{ text: systemPrompt }] },
       contents: [{ role: 'user', parts: [{ text: `Analyze this chat:\n\n${chatText}` }] }],
       generationConfig: {
         temperature: 0.2,
@@ -225,6 +270,20 @@ function truncate(chatText: string): string {
 /* ─── Route ─── */
 
 export async function POST(req: NextRequest) {
+  // Rate limit first — cheaper than parsing a large body under abuse
+  const ip = clientIp(req);
+  const rl = checkRateLimit(ip);
+  if (!rl.allowed) {
+    return errorResponse(
+      429,
+      {
+        error: `Rate limit exceeded. Try again in ${rl.retryAfterSec} seconds.`,
+        code: 'rate_limited',
+      },
+      { 'Retry-After': String(rl.retryAfterSec) }
+    );
+  }
+
   let body: AnalyzeRequestBody;
   try {
     body = (await req.json()) as AnalyzeRequestBody;
@@ -246,6 +305,28 @@ export async function POST(req: NextRequest) {
     return errorResponse(413, {
       error: `Chat text too large (max ${MAX_CHAT_CHARS.toLocaleString()} characters)`,
       code: 'chat_too_large',
+    });
+  }
+
+  // Resolve relationship type -> system prompt
+  let systemPrompt: string;
+  if (typeof body.relationshipType === 'string') {
+    if (Object.prototype.hasOwnProperty.call(allConfigs, body.relationshipType)) {
+      const cfg = allConfigs[body.relationshipType as RelationshipTypeId];
+      systemPrompt = cfg.systemPrompt;
+    } else {
+      return errorResponse(400, {
+        error: `Unknown relationshipType: ${body.relationshipType}`,
+        code: 'invalid_type',
+      });
+    }
+  } else if (body.relationshipType === undefined) {
+    const romantic = allConfigs['romantic' as RelationshipTypeId];
+    systemPrompt = romantic?.systemPrompt ?? FALLBACK_SYSTEM_PROMPT;
+  } else {
+    return errorResponse(400, {
+      error: 'relationshipType must be a string',
+      code: 'invalid_type',
     });
   }
 
@@ -276,7 +357,9 @@ export async function POST(req: NextRequest) {
 
   try {
     const analysis =
-      provider === 'google' ? await callGoogle(apiKey, chatText) : await callAnthropic(apiKey, chatText);
+      provider === 'google'
+        ? await callGoogle(apiKey, chatText, systemPrompt)
+        : await callAnthropic(apiKey, chatText, systemPrompt);
     return NextResponse.json(analysis);
   } catch (err) {
     if (err instanceof UpstreamError) {
