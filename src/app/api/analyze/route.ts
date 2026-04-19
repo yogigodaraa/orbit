@@ -355,12 +355,41 @@ export async function POST(req: NextRequest) {
 
   const chatText = truncate(body.chatText);
 
+  // v2 pre-LLM grounding pass — compute deterministic stats (volumes,
+  // reply latencies, reciprocity, Gottman ratio, attachment estimates)
+  // and inject them into the system prompt so the LLM narrative reads
+  // real numbers instead of re-estimating them from the raw chat.
+  // Import dynamically so a failure in analysis never blocks the LLM call.
+  let groundedPrompt = systemPrompt;
+  let groundingBundle: unknown = null;
+  try {
+    const { runAnalysis } = await import('@/lib/analysis');
+    const bundle = runAnalysis(chatText);
+    if (bundle.stats.totalMessages > 0) {
+      groundedPrompt = `${bundle.llmContext}\n\n${systemPrompt}`;
+      groundingBundle = {
+        stats: bundle.stats,
+        gottman: bundle.gottman,
+        attachment: bundle.attachment,
+      };
+    }
+  } catch {
+    // If the parse fails (unusual export format, etc.) fall through to
+    // the raw LLM call — same behaviour as v1.
+  }
+
   try {
     const analysis =
       provider === 'google'
-        ? await callGoogle(apiKey, chatText, systemPrompt)
-        : await callAnthropic(apiKey, chatText, systemPrompt);
-    return NextResponse.json(analysis);
+        ? await callGoogle(apiKey, chatText, groundedPrompt)
+        : await callAnthropic(apiKey, chatText, groundedPrompt);
+    // Merge deterministic numbers into the response so the frontend can
+    // render them without re-parsing the LLM text.
+    const merged =
+      groundingBundle && typeof analysis === 'object' && analysis !== null
+        ? { ...(analysis as Record<string, unknown>), grounding: groundingBundle }
+        : analysis;
+    return NextResponse.json(merged);
   } catch (err) {
     if (err instanceof UpstreamError) {
       return errorResponse(502, {
