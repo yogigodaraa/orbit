@@ -605,8 +605,8 @@ export default function AnalyzePage() {
           </div>
 
           <p className="mt-2 text-[11px] leading-relaxed text-[#6b7280]">
-            Stored only in your browser&rsquo;s localStorage. Sent once per analysis to{' '}
-            {provider === 'google' ? 'Google' : 'Anthropic'}, never to us. No key? Use{' '}
+            Stored only in your browser&rsquo;s localStorage. Passed through Orbit&rsquo;s server to{' '}
+            {provider === 'google' ? 'Google' : 'Anthropic'} once per analysis, never saved or logged. No key? Use{' '}
             <button
               type="button"
               onClick={loadDemo}
