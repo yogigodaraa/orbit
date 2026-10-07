@@ -2,6 +2,9 @@
 
 [![CI](https://github.com/yogigodaraa/orbit/actions/workflows/ci.yml/badge.svg)](https://github.com/yogigodaraa/orbit/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+![Status: maintenance](https://img.shields.io/badge/status-maintenance%20only-lightgrey)
+
+> **Status: complete — maintenance only.** This project works and stays online, but no new features are planned. Security updates are still applied.
 
 AI relationship & chat analysis. Upload a WhatsApp or Instagram export and get a deep breakdown of how two people actually relate — tuned to *who* the other person is.
 
