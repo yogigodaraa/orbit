@@ -41,9 +41,8 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# claude
+# claude (CLAUDE.md is committed on purpose; local settings are not)
 .claude/
-CLAUDE.md
 AGENTS.md
 
 # os

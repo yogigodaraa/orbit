@@ -103,7 +103,7 @@ const steps = [
   {
     num: "02",
     title: "Paste your API key",
-    desc: "Free Gemini key or a Claude key. Stored only in your browser\u2019s localStorage, sent directly to the provider.",
+    desc: "Free Gemini key or a Claude key. Stored only in your browser\u2019s localStorage, passed through to the provider for each analysis and never saved on the server.",
   },
   {
     num: "03",
@@ -257,10 +257,11 @@ export default function LandingPage() {
             Your privacy is non-negotiable
           </h2>
           <p className="mt-4 text-base leading-relaxed text-[#9ca3af] max-w-xl mx-auto">
-            Your chat goes directly from your browser to Anthropic or Google
-            using the API key you paste. Your key lives in your browser&apos;s
-            localStorage only. Nothing is stored or logged on our side. Open source,
-            self-hostable, no accounts, no tracking.
+            Your chat and key are sent to Orbit&apos;s analysis endpoint, which
+            forwards them to Anthropic or Google and returns the result. Nothing is
+            stored or logged on our side, and your key lives in your browser&apos;s
+            localStorage only. Open source, self-hostable, no accounts, only
+            anonymous page-view analytics.
           </p>
         </div>
       </section>

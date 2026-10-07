@@ -1,0 +1,18 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # Check name: "web / test". Branch protection requires it, so keep the job id stable.
+  web:
+    uses: yogigodaraa/.github/.github/workflows/node-ci.yml@main
